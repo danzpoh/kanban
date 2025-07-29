@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Bootstrap 3 -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+
+  <!-- Font Awesome (Free Icons for Add/Delete) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+  <!-- SortableJS -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
+  <title>Responsive Kanban</title>
+
+  <style>
+    body {
+      font-family: Georgia, serif;
+      background-color: #fdfdfd;
+      padding: 10px;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      min-height: 200px;
+    }
+
+    li {
+      background: white;
+      margin: 5px 0;
+      padding: 10px;
+      border-radius: 5px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      cursor: grab;
+      position: relative;
+    }
+
+    li .delete-btn {
+      position: absolute;
+      right: 10px;
+      top: 5px;
+    }
+
+    .add-btn {
+      font-size: 14px;
+      padding: 4px 8px;
+    }
+
+    .icon-btn {
+      border: none;
+      background: none;
+      color: inherit;
+    }
+
+    h3 {
+      margin-top: 0;
+      margin-bottom: 15px;
+    }
+
+    /* Portrait tweak: 2 boxes per row */
+    @media (orientation: portrait) {
+      .col-xs-3 {
+        width: 50%;
+        float: left;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container-fluid text-center">
+  <h1>Simple Kanban</h1>
+  <div class="row">
+
+    <div class="col-xs-3">
+      <h3>
+        <button type="button" class="btn btn-danger btn-lg">
+          New <span id="count-new" class="badge">0</span>
+        </button>
+        <button type="button" class="btn btn-default btn-lg add-btn" onclick="addTask('new')" title="Add Task">
+          <i class="fa fa-plus-circle"></i>
+        </button>
+      </h3>
+      <ul id="new" class="task-list"></ul>
+    </div>
+
+    <div class="col-xs-3">
+      <h3>
+        <button type="button" class="btn btn-warning btn-lg">
+          Doing <span id="count-doing" class="badge">0</span>
+        </button>
+      </h3>
+      <ul id="doing" class="task-list"></ul>
+    </div>
+
+    <div class="col-xs-3">
+      <h3>
+        <button type="button" class="btn btn-info btn-lg">
+          Review <span id="count-review" class="badge">0</span>
+        </button>
+      </h3>
+      <ul id="review" class="task-list"></ul>
+    </div>
+
+    <div class="col-xs-3">
+      <h3>
+        <button type="button" class="btn btn-success btn-lg">
+          Done <span id="count-done" class="badge">0</span>
+        </button>
+      </h3>
+      <ul id="done" class="task-list"></ul>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const columns = ['new', 'doing', 'review', 'done'];
+
+  // Initialize SortableJS
+  columns.forEach(id => {
+    new Sortable(document.getElementById(id), {
+      group: 'tasks',
+      animation: 150,
+      onEnd: () => {
+        saveTasks();
+        updateCounts();
+      }
+    });
+  });
+
+  // Create task element
+  function createTaskElement(text, columnId) {
+    const li = document.createElement("li");
+    li.textContent = text;
+
+    // Double-click to edit
+    li.ondblclick = function () {
+      const newText = prompt("Edit task:", this.firstChild.textContent);
+      if (newText !== null && newText.trim() !== "") {
+        this.firstChild.textContent = newText;
+        saveTasks();
+      }
+    };
+
+    // Add delete icon if in 'done'
+    if (columnId === 'done') {
+      const delBtn = document.createElement('button');
+      delBtn.className = "btn btn-xs btn-danger delete-btn icon-btn";
+      delBtn.innerHTML = '<i class="fa fa-trash"></i>';
+      delBtn.title = "Delete";
+      delBtn.onclick = function (e) {
+        e.stopPropagation();
+        li.remove();
+        saveTasks();
+        updateCounts();
+      };
+      li.appendChild(delBtn);
+    }
+
+    return li;
+  }
+
+  // Add task
+  function addTask(columnId) {
+    const text = prompt("Add task:");
+    if (text && text.trim() !== "") {
+      const li = createTaskElement(text, columnId);
+      document.getElementById(columnId).appendChild(li);
+      saveTasks();
+      updateCounts();
+    }
+  }
+
+  // Save to localStorage
+  function saveTasks() {
+    const data = {};
+    columns.forEach(id => {
+      const items = Array.from(document.getElementById(id).children).map(li => li.firstChild.textContent);
+      data[id] = items;
+    });
+    localStorage.setItem("taskBoard", JSON.stringify(data));
+  }
+
+  // Load from localStorage
+  function loadTasks() {
+    const data = JSON.parse(localStorage.getItem("taskBoard"));
+    if (!data) return;
+    columns.forEach(id => {
+      const ul = document.getElementById(id);
+      ul.innerHTML = '';
+      data[id].forEach(task => {
+        const li = createTaskElement(task, id);
+        ul.appendChild(li);
+      });
+    });
+  }
+
+  // Update badge counts
+  function updateCounts() {
+    columns.forEach(id => {
+      const count = document.getElementById(id).children.length;
+      document.getElementById(`count-${id}`).textContent = count;
+    });
+  }
+
+  // Initialize
+  loadTasks();
+  updateCounts();
+</script>
+
+</body>
+</html>
